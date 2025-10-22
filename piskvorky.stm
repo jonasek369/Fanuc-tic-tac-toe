@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3x3 Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 5px;
+      justify-content: center;
+    }
+    form {
+      margin: 0;
+    }
+    h1, h2 {
+      color: white;
+    }
+    button {
+      width: 80px;
+      height: 80px;
+      font-size: 2em;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<h1>Tic Tac Toe</h1>
+<h2>Piskvorky</h2>
+
+<div class="board">
+  <!-- Row 1 -->
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="1">
+    <input type="hidden" name="y" value="1">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="1">
+    <input type="hidden" name="y" value="2">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="1">
+    <input type="hidden" name="y" value="3">
+    <button type="submit"></button>
+  </form>
+
+  <!-- Row 2 -->
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="2">
+    <input type="hidden" name="y" value="1">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="2">
+    <input type="hidden" name="y" value="2">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="2">
+    <input type="hidden" name="y" value="3">
+    <button type="submit"></button>
+  </form>
+
+  <!-- Row 3 -->
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="3">
+    <input type="hidden" name="y" value="1">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="3">
+    <input type="hidden" name="y" value="2">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/registr1" method="GET">
+    <input type="hidden" name="x" value="3">
+    <input type="hidden" name="y" value="3">
+    <button type="submit"></button>
+  </form>
+</div>
+<h1>SSPVC</h1>
+
+</body>
+</html>
