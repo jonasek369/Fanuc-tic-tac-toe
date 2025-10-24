@@ -275,11 +275,11 @@ BEGIN
 		ENDIF
 		i = (reg_x - 1) * 3 + reg_y
 		IF NOT (board[i] = -1) THEN
-			SET_INT_REG(reg_game,0 , reg_status)
+			SET_INT_REG(12, 0 , reg_status)
 			GOTO START_LOOP
 		ENDIF
 		board[i] = PLAYER
-		SET_INT_REG(reg_game, 0, reg_status)
+		SET_INT_REG(12, 0, reg_status)
 		SET_INT_REG(13, bily, reg_status)
 		SET_INT_REG(14, 1, reg_status)
 		CALL_PROG('A_VZIT_SYMBOL_X', prog)
@@ -315,4 +315,5 @@ BEGIN
 			GOTO RESET_GAME
 		ENDIF
 	ENDWHILE
+
 END pisk
