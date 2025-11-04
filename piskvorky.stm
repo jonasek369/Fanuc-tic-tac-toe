@@ -11,10 +11,12 @@
     }
     .board {
       display: grid;
-      grid-template-columns: repeat(3, 80px);
-      grid-template-rows: repeat(3, 80px);
+      grid-template-columns: repeat(3, 150px);
+      grid-template-rows: repeat(3, 150px);
       gap: 5px;
       justify-content: center;
+      transform: rotate(90deg); /* Rotate the entire board */
+      transform-origin: center center; /* Rotate around the center of the grid */
     }
     form {
       margin: 0;
@@ -23,10 +25,26 @@
       color: white;
     }
     button {
-      width: 80px;
-      height: 80px;
+      width: 130px;
+      height: 130px;
       font-size: 2em;
       cursor: pointer;
+    }
+    .frame {
+      background-color: #ffdd00;
+      border: 8px solid #cc9900;
+      padding: 20px;
+      box-shadow: 8px 8px 0px #999999;
+      width: 320px;
+      box-sizing: border-box;
+      margin: 0 auto;
+    }
+    .text {
+      font-size: 32px;
+      font-weight: bold;
+      color: #333333;
+      text-align: center;
+      margin: 0;
     }
   </style>
 </head>
@@ -86,7 +104,33 @@
     <button type="submit"></button>
   </form>
 </div>
-<h1>SSPVC</h1>
 
+    <!-- Priklad  -->
+    <!--#if expr="F[4] = on"  -->
+        <div class="frame">
+            <p class="text">hmmm.... premyslim</p>
+        </div>
+    <!--#elif expr="F[1] = on"  -->
+        <div class="frame">
+            <p class="text">Vyhral jsi!</p>
+        </div>
+    <!--#elif expr="F[2] = on"  -->
+        <div class="frame">
+            <p class="text">Vyhral Robot</p>
+        </div>
+    <!--#elif expr="F[3] = on"  -->
+        <div class="frame">
+            <p class="text">Remiza</p>
+        </div>
+    <!--#else -->
+        <p></p>
+    <!--#endif -->
+<h1>SSPVC</h1>
+<script>
+    function refresh(){
+        window.location.reload();
+    }
+    setInterval(refresh, 1000);
+</script>
 </body>
 </html>
