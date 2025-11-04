@@ -54,6 +54,7 @@ VAR
 	cerny: INTEGER              -- How many black pucks are on the stack
 	movetm: BMOVE               -- Variable for storing an move (x, y)
 	running: BOOLEAN
+	first_move: BOOLEAN -- Indicates whenever it is the first move of AI
 
 -- Minimax Algorithm implementation from 
 -- https://www.geeksforgeeks.org/dsa/finding-optimal-move-in-tic-tac-toe-using-minimax-algorithm-in-game-theory/
@@ -157,6 +158,12 @@ BEGIN
 	
 	IF(ISMOVELEFT(B) = FALSE) THEN
 		RETURN (0)
+	ENDIF
+	
+	IF first_move THEN
+		IF depth >= 3 THEN
+			RETURN(0) -- Stop the recursion at depth 3 for the first move
+		ENDIF
 	ENDIF
 	
 	IF ismax THEN
@@ -293,6 +300,12 @@ BEGIN
 	SET_INT_REG(12, 0, reg_status)
 	running = TRUE
 	
+	FLG[1] = FALSE
+	FLG[2] = FALSE
+	FLG[3] = FALSE
+	
+	first_move = TRUE
+	
 	WHILE(running) DO
 	    START_LOOP::
 		GET_REG(10, FALSE, reg_x, reg_real, reg_status)    -- Reading players move X
@@ -320,11 +333,18 @@ BEGIN
 		SET_INT_REG(15, (reg_y-1), reg_status) -- X position to place (Switched because the robot and internal board do not align)
 		SET_INT_REG(16, 3-reg_x, reg_status)   -- Y position to place (using a different register because user could change it in the middle of execution)
 		CALL_PROG('A_POLOZIT_SYMBOL_X', prog)  -- Places the symbol onto physical board 
+		IF first_move THEN
+			FLG[4] = TRUE
+		ENDIF
 		movetm = FBM(board)                    -- Computes next best move
+		IF first_move THEN
+			FLG[4] = FALSE
+			first_move = FALSE
+		ENDIF
 		WRITE('Found best move=', movetm.x, ' ', movetm.y, CHR(10))
 		-- FBM can return -1, -1 if no move happened (which should indicate finished game)
 		-- so we don't do a move
-		IF NOT(movetm.x = -1) AND NOT(movetm.y = -1) THE
+		IF NOT(movetm.x = -1) AND NOT(movetm.y = -1) THEN
 		    -- Same but for AI
 			board[(movetm.x - 1) * 3 + movetm.y] = AI
 			SET_INT_REG(13, cerny, reg_status)
@@ -337,22 +357,24 @@ BEGIN
 		ENDIF
 		-- Evaluate returns score for AI so negative = lose for AI positiove = win for AI
 		IF EVALUATE(board) = -10 THEN
+			FLG[1] = TRUE
 			WRITE('Player wins!', CHR(10))
 			-- adding +1 because moving program expects 0 for none on stack
 			CLEAR_B(board, bily+1, cerny+1)
 			GOTO RESET_GAME
 		ENDIF
 		IF EVALUATE(board) = 10 THEN
+			FLG[2] = TRUE
 			WRITE('AI wins!', CHR(10))
 			CLEAR_B(board, bily+1, cerny+1)
 			GOTO RESET_GAME
 		ENDIF
 		-- If no more moves are possible and win/lose wasn't triggered, we draw
 		IF NOT ISMOVELEFT(board) THEN
+			FLG[3] = TRUE
 			WRITE('Draw!', CHR(10))
 			CLEAR_B(board, bily+1, cerny+1)
 			GOTO RESET_GAME
 		ENDIF
 	ENDWHILE
-
 END pisk
