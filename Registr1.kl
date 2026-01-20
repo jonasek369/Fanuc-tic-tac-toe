@@ -1,0 +1,20 @@
+PROGRAM registr1
+%COMMENT='Test'
+%NOLOCKGROUP
+%NOPAUSE = ERROR+COMMAND+TPENABLE
+VAR
+	status: INTEGER
+	x: STRING[10]
+	xi: INTEGER
+	y: STRING[10]
+	yi: INTEGER
+	return_code: INTEGER
+BEGIN
+	-- this program changes values in registers when called from .stm
+	CNV_STR_INT(x, xi)
+	CNV_STR_INT(y, yi)
+	SET_INT_REG(10, xi, status)
+	SET_INT_REG(11, yi, status)
+	SET_INT_REG(12, 1, status)
+	return_code = 204
+END registr1
