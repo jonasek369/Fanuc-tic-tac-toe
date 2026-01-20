@@ -1,4 +1,4 @@
-PROGRAM pisk
+PROGRAM pisk_fast
 %COMMENT='Piskvorky1'
 %NOLOCKGROUP
 -- %NOPAUSE = ERROR+COMMAND+TPENABLE
@@ -75,7 +75,7 @@ BEGIN
 END ISMOVELEFT
 
 -- evaluates score of board state for AI lose=-10, no_impact=0 win=10
-ROUTINE EVALUATE(b: ARRAY[*] OF INTEGER): INTEGER
+ROUTINE EVALUATE(b: ARRAY[*] OF INTEGER): REAL
 VAR
     col: INTEGER
     row: INTEGER
@@ -123,31 +123,12 @@ BEGIN
     RETURN(0)
 END EVALUATE
 
--- Returns bigger number
-ROUTINE MAX_I(a: INTEGER; b: INTEGER): INTEGER
-BEGIN
-	IF a > b THEN
-		RETURN(a)
-	ELSE
-		RETURN(b)
-	ENDIF
-END MAX_I
-
--- Returns a smaller number
-ROUTINE MIN_I(a: INTEGER; b: INTEGER): INTEGER
-BEGIN
-	IF a > b THEN
-		RETURN(b)
-	ELSE
-		RETURN(a)
-	ENDIF
-END MIN_I
-
 -- MINIMAX Algorithm
-ROUTINE MINIMAX(b: ARRAY[*] OF INTEGER; depth: INTEGER; ismax: BOOLEAN): INTEGER
+ROUTINE MINIMAX(b: ARRAY[*] OF INTEGER; depth: INTEGER; ismax: BOOLEAN): REAL
 VAR
-	score: INTEGER
-	best: INTEGER
+	score: REAL
+	best: REAL
+	tmp: REAL
 	mnm_i: INTEGER
 	mnm_row: INTEGER
 	mnm_col: INTEGER
@@ -161,11 +142,11 @@ BEGIN
 		RETURN (0)
 	ENDIF
 	
-	IF first_move THEN
-		IF depth >= 3 THEN
-			RETURN(0) -- Stop the recursion at depth 3 for the first move
-		ENDIF
-	ENDIF
+	--IF first_move THEN
+	--	IF depth >= 3 THEN
+	--		RETURN(0) -- Stop the recursion at depth 3 for the first move
+	--	ENDIF
+	--ENDIF
 	
 	IF ismax THEN
 		best = -1000
@@ -175,7 +156,8 @@ BEGIN
 			IF b[mnm_i] = -1 THEN
 				b[mnm_i] = AI
 				
-				best = MAX_I(best, MINIMAX(b, depth+1, NOT ismax))
+				tmp = MINIMAX(b, depth+1, NOT ismax)
+				best = (best + tmp + ABS(best - tmp)) / 2.0 -- ARITHMETIC Max
 				
 				b[mnm_i] = -1
 			ENDIF
@@ -190,7 +172,8 @@ BEGIN
 
 				b[mnm_i] = PLAYER
 				
-				best = MIN_I(best, MINIMAX(b, depth+1, NOT ismax))
+				tmp = MINIMAX(b, depth+1, NOT ismax)
+				best = (best + tmp - ABS(best - tmp)) / 2.0  -- ARITHMETIC Min
 				
 				b[mnm_i] = EMPTY
 			ENDIF
@@ -203,8 +186,8 @@ END MINIMAX
 -- FIND BEST MOVE
 ROUTINE FBM(b: ARRAY[*] OF INTEGER): BMOVE
 VAR 
-	bestval: INTEGER
-	moveval: INTEGER
+	bestval: REAL
+	moveval: REAL
 	fbm_row: INTEGER
 	fbm_col: INTEGER
 	fbm_i: INTEGER
@@ -362,7 +345,7 @@ BEGIN
 		--Check IF the MOVE that AI made was win/lose/draw  it resets board AND sets flag otherwise skip
 		game_state = CHECK_STATE(board, bily+1, cerny+1) 
 		IF game_state THEN
-			GOTO RESET_GAME
+			GOTO END_LOOP
 		ENDIF
 		IF first_move THEN
 			FLG[4] = TRUE
@@ -388,8 +371,9 @@ BEGIN
 			--Check if the move that AI made was win/lose/draw  it resets board and sets flag otherwise skip
 			game_state = CHECK_STATE(board, bily+1, cerny+1) 
 			IF game_state THEN
-				GOTO RESET_GAME
+				GOTO END_LOOP
 			ENDIF
 		ENDIF
 	ENDWHILE
-END pisk
+	END_LOOP::
+END pisk_fast
