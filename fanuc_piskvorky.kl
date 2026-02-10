@@ -1,0 +1,408 @@
+PROGRAM fanuc_piskvorky
+%COMMENT='Jonáš Erlebach https://github.com/jonasek369/'
+%NOLOCKGROUP
+-- %NOPAUSE = ERROR+COMMAND+TPENABLE
+
+-- NOTICE!
+-- Stacks are meant as physical places for the pucks/symbols where they are stacked
+-- onto each other, not the data structure
+
+-- Also, I've read that there is a limit of 12 characters on variable/routine names
+-- so that's why some variable/routine names are a bit weird 
+
+-- Registers used
+-- R[10] = User input X (vystup z stm stranky)
+-- R[11] = User input Y (vystup z stm stranky)
+-- R[12] = Game clock (indicates if a move from a player happened)
+-- R[13] = Count of pucks on stack from 0 to n (0 = stack is empty) 
+-- R[14] = IsWhite indicates if the program should be taking from the black/white stack 1/0
+--
+--         This is what the moving program uses; it is already converted to
+--         the coordinates that the robot expects are also used, so the user can't
+--         change the move after it was registered
+-- R[15] = Real X (vystup z karel programu)
+-- R[15] = Real Y (vystup z karel programu)
+
+
+
+TYPE 
+-- STRUCTURE for storing a move
+BMOVE = STRUCTURE
+	x: INTEGER
+	y: INTEGER
+ENDSTRUCTURE
+
+CONST
+    -- Constants for code clarity
+	PLAYER = 0
+	AI = 1
+	EMPTY = -1
+VAR
+	board:  ARRAY[9] OF INTEGER -- Internal state of the board (3x3)
+	                            --   using flat array because I could not get 2D arrays to work
+	i: INTEGER                  -- Variable for Iteration
+	x: INTEGER                  -- Variable for X
+	y: INTEGER                  -- Variable for Y
+	
+	reg_x: INTEGER              -- User input register X
+	reg_y: INTEGER              -- User input register Y
+	reg_real: REAL              -- Placeholder register (isn't used for anything)
+	reg_status: INTEGER         -- register for the status of register reading/writing
+	reg_game: INTEGER           -- register holding 0/1 which indicates if move has happened
+	prog: INTEGER               -- Status of called program
+	bily: INTEGER               -- How many white pucks are on the stack
+	cerny: INTEGER              -- How many black pucks are on the stack
+	movetm: BMOVE               -- Variable for storing an move (x, y)
+	running: BOOLEAN
+	first_move: BOOLEAN -- Indicates whenever it is the first move of AI
+	                                         -- used for flag and can be used to make it easier
+	                                         -- by removing comment in function MINIMAX
+	game_state: BOOLEAN
+
+-- Minimax Algorithm implementation from 
+-- https://www.geeksforgeeks.org/dsa/finding-optimal-move-in-tic-tac-toe-using-minimax-algorithm-in-game-theory/
+-- see the website for a detailed explanation of each function
+
+-- Check if there are any more moves on the board
+ROUTINE ISMOVELEFT(b: ARRAY[*] OF INTEGER): BOOLEAN
+VAR
+	ism_i: INTEGER
+BEGIN
+	FOR ism_i = 1 TO 9 DO
+		IF b[ism_i] = -1 THEN
+			RETURN(TRUE)
+		ENDIF
+	ENDFOR
+	RETURN(FALSE)
+END ISMOVELEFT
+
+-- evaluates score of board state for AI lose=-10, no_impact=0 win=10
+ROUTINE EVALUATE(b: ARRAY[*] OF INTEGER): REAL
+VAR
+    col: INTEGER
+    row: INTEGER
+BEGIN
+    FOR row = 1 TO 3 DO
+        IF (b[(row - 1) * 3 + 1] = b[(row - 1) * 3 + 2]) AND (b[(row - 1) * 3 + 2] = b[(row - 1) * 3 + 3]) THEN
+            IF (b[(row - 1) * 3 + 1] = AI) THEN
+                RETURN(10)
+            ENDIF
+            IF (b[(row - 1) * 3 + 1] = PLAYER) THEN
+                RETURN(-10)
+            ENDIF
+        ENDIF
+    ENDFOR
+
+    FOR col = 1 TO 3 DO
+        IF (b[col] = b[col + 3]) AND (b[col + 3] = b[col + 6]) THEN
+            IF (b[col] = AI) THEN
+                RETURN(10)
+            ENDIF
+            IF (b[col] = PLAYER) THEN
+                RETURN(-10)
+            ENDIF
+        ENDIF
+    ENDFOR
+
+    IF (b[1] = b[5]) AND (b[5] = b[9]) THEN
+        IF (b[1] = AI) THEN
+            RETURN(10)
+        ENDIF
+        IF (b[1] = PLAYER) THEN
+            RETURN(-10)
+        ENDIF
+    ENDIF
+
+    IF (b[3] = b[5]) AND (b[5] = b[7]) THEN
+        IF (b[3] = AI) THEN
+            RETURN(10)
+        ENDIF
+        IF (b[3] = PLAYER) THEN
+            RETURN(-10)
+        ENDIF
+    ENDIF
+
+    RETURN(0)
+END EVALUATE
+
+-- Returns bigger number
+ROUTINE MAX_I(a: INTEGER; b: INTEGER): INTEGER
+BEGIN
+	IF a > b THEN
+		RETURN(a)
+	ELSE
+		RETURN(b)
+	ENDIF
+END MAX_I
+
+-- Returns a smaller number
+ROUTINE MIN_I(a: INTEGER; b: INTEGER): INTEGER
+BEGIN
+	IF a > b THEN
+		RETURN(b)
+	ELSE
+		RETURN(a)
+	ENDIF
+END MIN_I
+
+-- MINIMAX Algorithm
+ROUTINE MINIMAX(b: ARRAY[*] OF INTEGER; depth: INTEGER; ismax: BOOLEAN): REAL
+VAR
+	score: REAL
+	best: REAL
+	tmp: REAL
+	mnm_i: INTEGER
+	mnm_row: INTEGER
+	mnm_col: INTEGER
+BEGIN
+	score = EVALUATE(b)
+	IF (score = 10) OR (score = -10) THEN
+		RETURN(score)
+	ENDIF
+	
+	IF(ISMOVELEFT(B) = FALSE) THEN
+		RETURN (0)
+	ENDIF
+	
+	-- This if makes it easier
+	IF first_move THEN
+		IF depth >= 3 THEN
+			RETURN(0) -- Stop the recursion at depth 3 for the first move
+		ENDIF
+	ENDIF
+	
+	IF ismax THEN
+		best = -1000
+		FOR mnm_i = 1 TO 9 DO
+			mnm_row = (mnm_i-1) DIV 3 + 1
+			mnm_col = (mnm_i-1) MOD 3 + 1
+			IF b[mnm_i] = -1 THEN
+				b[mnm_i] = AI
+				
+				tmp = MINIMAX(b, depth+1, NOT ismax)
+				best = (best + tmp + ABS(best - tmp)) / 2.0 -- ARITHMETIC Max
+				
+				b[mnm_i] = -1
+			ENDIF
+		ENDFOR
+		RETURN(best)
+	ELSE
+		best = 1000
+		FOR mnm_i = 1 TO 9 DO
+			IF b[mnm_i] = EMPTY THEN
+				mnm_row = (mnm_i-1) DIV 3 + 1
+				mnm_col = (mnm_i-1) MOD 3 + 1
+
+				b[mnm_i] = PLAYER
+				
+				tmp = MINIMAX(b, depth+1, NOT ismax)
+				best = (best + tmp - ABS(best - tmp)) / 2.0  -- ARITHMETIC Min
+				
+				b[mnm_i] = EMPTY
+			ENDIF
+		ENDFOR
+		RETURN(best)
+	ENDIF
+END MINIMAX
+
+
+-- FIND BEST MOVE
+ROUTINE FBM(b: ARRAY[*] OF INTEGER): BMOVE
+VAR 
+	bestval: REAL
+	moveval: REAL
+	fbm_row: INTEGER
+	fbm_col: INTEGER
+	fbm_i: INTEGER
+	
+	bestmove: BMOVE
+BEGIN
+	bestmove.x = -1
+	bestmove.y = -1
+	bestval = -10000
+	WRITE('FBM called, evaluating board:', CHR(10))
+	FOR fbm_i =  1 TO 9 DO
+		IF b[fbm_i] = EMPTY THEN
+			fbm_row = (fbm_i-1) DIV 3 + 1
+			fbm_col = (fbm_i-1) MOD 3 + 1
+		
+			b[fbm_i] = AI
+		
+			moveval = minimax(b, 0, FALSE)
+		
+			b[fbm_i] = EMPTY
+			
+			IF moveval > bestval THEN
+				bestmove.x = fbm_row
+				bestmove.y = fbm_col
+				bestval = moveval
+			ENDIF
+		ENDIF
+	ENDFOR
+	RETURN(bestmove)
+END FBM
+
+
+ROUTINE DRAW_B(b: ARRAY[*] OF INTEGER)
+VAR
+	draw_i: INTEGER
+BEGIN
+    -- Function for debugging that will print the board into MENU->USER
+	FOR draw_i = 1 TO 9 DO
+		WRITE(b[draw_i])
+		IF (draw_i MOD 3) = 0 THEN
+			WRITE(CHR(10))
+		ENDIF
+	ENDFOR
+END DRAW_B
+
+-- Routine for cleaning up the physical board to the stacks
+ROUTINE CLEAR_B(b: ARRAY[*] OF INTEGER;ZBBILA: INTEGER; ZBCERNA: INTEGER)
+VAR
+	clear_i: INTEGER
+	clear_row: INTEGER
+	clear_col: INTEGER
+	cur_bila: INTEGER
+	cur_cerna: INTEGER
+BEGIN
+	cur_bila = ZBBILA   -- We take how many symbols are left on the stack  
+	cur_cerna = ZBCERNA
+	FOR clear_i =  1 TO 9 DO
+	    -- calculate X, Y
+		clear_row = (clear_i-1) DIV 3 + 1 -- X
+		clear_col = (clear_i-1) MOD 3 + 1 -- Y
+		IF (b[clear_i] = PLAYER) THEN
+			SET_INT_REG(13, cur_bila, reg_status)       -- Set how many are already on the stack
+			SET_INT_REG(14, 1, reg_status)              -- Set IsWhite register
+			SET_INT_REG(15, (clear_col-1), reg_status)  -- X register
+			SET_INT_REG(16,  3-clear_row, reg_status)   -- Y register
+			CALL_PROG('A_VRACENI_PISKV', prog)          -- Put the symbol on the stack
+			cur_bila = cur_bila + 1                     -- Add how many symbols are on the stack
+		ENDIF
+		IF (b[clear_i] = AI) THEN
+		    -- Same but for AI
+			SET_INT_REG(13, cur_cerna, reg_status)
+			SET_INT_REG(14, 0, reg_status)
+			SET_INT_REG(15, (clear_col-1), reg_status)
+			SET_INT_REG(16,  3-clear_row, reg_status)
+			CALL_PROG('A_VRACENI_PISKV', prog)
+			cur_cerna = cur_cerna + 1
+		ENDIF
+	ENDFOR
+END CLEAR_B
+
+ROUTINE CHECK_STATE(b: ARRAY[*] OF INTEGER;ZBBILA: INTEGER; ZBCERNA: INTEGER): BOOLEAN
+BEGIN
+	IF EVALUATE(board) = -10 THEN
+		FLG[1] = TRUE
+		WRITE('Player wins!', CHR(10))
+		CALL_PROG('A_VYHRA_HRAC', prog)
+		CLEAR_B(b , ZBBILA,ZBCERNA)
+		RETURN(TRUE)
+	ENDIF
+	IF EVALUATE(board) = 10 THEN
+		FLG[2] = TRUE
+		WRITE('AI wins!', CHR(10))
+		CALL_PROG('A_VYHRA_ROBOT', prog)
+		CLEAR_B(b , ZBBILA,ZBCERNA)
+		RETURN(TRUE)
+	ENDIF
+	-- If no more moves are possible and win/lose wasn't triggered, we draw
+	IF NOT ISMOVELEFT(board) THEN
+		FLG[3] = TRUE
+		WRITE('Draw!', CHR(10))
+		CALL_PROG('A_VYHRA_REMIZA', prog)		
+		CLEAR_B(b , ZBBILA,ZBCERNA)
+		RETURN(TRUE)
+	ENDIF
+	RETURN(FALSE)
+END CHECK_STATE
+
+
+BEGIN
+	WRITE('Logic created by Jonas Erlebach', CHR(10))
+	WRITE('github.com/jonasek369', CHR(10))
+	WRITE('Movement created by David Kucera', CHR(10))
+	WRITE('github.com/KurkyOkurky', CHR(10))
+	RESET_GAME::
+	-- Reset board and game state
+	FOR i = 1 TO 9 DO 
+		board[i] = EMPTY
+	ENDFOR
+	
+	-- Count of pucks on stack
+	-- it is actually count-1 because moving program expects it (0 for last one on stack)
+	bily = 4  -- White pucks
+	cerny = 3 -- Black pucks
+	
+	SET_INT_REG(12, 0, reg_status)
+	running = TRUE
+	
+	FLG[1] = FALSE
+	FLG[2] = FALSE
+	FLG[3] = FALSE
+	
+	first_move = TRUE
+	
+	WHILE(running) DO
+	    START_LOOP::
+		GET_REG(10, FALSE, reg_x, reg_real, reg_status)    -- Reading players move X
+		GET_REG(11, FALSE, reg_y, reg_real, reg_status)    -- Reading players move Y
+		GET_REG(12, FALSE, reg_game, reg_real, reg_status) -- Reading game clock
+		-- check if the game clock happened
+		IF reg_game = 0 THEN
+		    -- If not, we go back to the start of the loop (waiting for user input)
+			GOTO START_LOOP
+		ENDIF
+		i = (reg_x - 1) * 3 + reg_y
+		-- Check if board is already occupied
+		IF NOT (board[i] = EMPTY) THEN
+		    -- If yes, invalidate the player's move
+			SET_INT_REG(12, 0 , reg_status)
+			GOTO START_LOOP
+		ENDIF
+		-- Players move
+		board[i] = PLAYER                      -- Stores players move into internal board
+		SET_INT_REG(12, 0, reg_status)         -- Marks move as done
+		SET_INT_REG(13, bily, reg_status)      -- Sets how many are on stack
+		SET_INT_REG(14, 1, reg_status)         -- Sets IsWhite Registr
+		CALL_PROG('A_VZIT_SYMBOL_X', prog)     -- Takes symbol from stack
+		bily = bily -1                         -- Subtracts from internal counter
+		SET_INT_REG(15, (reg_y-1), reg_status) -- X position to place (Switched because the robot and internal board do not align)
+		SET_INT_REG(16, 3-reg_x, reg_status)   -- Y position to place (using a different register because user could change it in the middle of execution)
+		CALL_PROG('A_POLOZIT_SYMBOL_X', prog)  -- Places the symbol onto physical board 
+		--Check IF the MOVE that AI made was win/lose/draw  it resets board AND sets flag otherwise skip
+		game_state = CHECK_STATE(board, bily+1, cerny+1) 
+		IF game_state THEN
+			GOTO RESET_GAME
+		ENDIF
+		IF first_move THEN
+			FLG[4] = TRUE
+		ENDIF
+		movetm = FBM(board)                    -- Computes next best move
+		IF first_move THEN
+			FLG[4] = FALSE
+			first_move = FALSE
+		ENDIF
+		WRITE('Found best move=', movetm.x, ' ', movetm.y, CHR(10))
+		-- FBM can return -1, -1 if no move happened (which should indicate finished game)
+		-- so we don't do a move
+		IF NOT(movetm.x = -1) AND NOT(movetm.y = -1) THEN
+		    -- Same but for AI
+			board[(movetm.x - 1) * 3 + movetm.y] = AI
+			SET_INT_REG(13, cerny, reg_status)
+			SET_INT_REG(14, 0, reg_status)
+			CALL_PROG('A_VZIT_SYMBOL_X', prog)
+			cerny = cerny - 1
+			SET_INT_REG(15, (movetm.y-1), reg_status)
+			SET_INT_REG(16,  3-movetm.x, reg_status)
+			CALL_PROG('A_POLOZIT_SYMBOL_X', prog)
+			--Check if the move that AI made was win/lose/draw  it resets board and sets flag otherwise skip
+			game_state = CHECK_STATE(board, bily+1, cerny+1) 
+			IF game_state THEN
+				GOTO RESET_GAME
+			ENDIF
+		ENDIF
+	ENDWHILE
+	END_LOOP::
+END fanuc_piskvorky

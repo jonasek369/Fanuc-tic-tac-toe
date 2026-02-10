@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3x3 Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 150px);
+      grid-template-rows: repeat(3, 150px);
+      gap: 5px;
+      justify-content: center;
+      transform: rotate(90deg); /* Rotate the entire board */
+      transform-origin: center center; /* Rotate around the center of the grid */
+    }
+    form {
+      margin: 0;
+    }
+    h1, h2 {
+      color: white;
+    }
+    button {
+      width: 130px;
+      height: 130px;
+      font-size: 2em;
+      cursor: pointer;
+    }
+    .frame {
+      background-color: #ffdd00;
+      border: 8px solid #cc9900;
+      padding: 20px;
+      box-shadow: 8px 8px 0px #999999;
+      width: 320px;
+      box-sizing: border-box;
+      margin: 0 auto;
+    }
+    .text {
+      font-size: 32px;
+      font-weight: bold;
+      color: #333333;
+      text-align: center;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+<h1>Tic Tac Toe</h1>
+<h2>Piskvorky</h2>
+
+<div class="board">
+  <!-- Row 1 -->
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="1">
+    <input type="hidden" name="y" value="1">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="1">
+    <input type="hidden" name="y" value="2">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="1">
+    <input type="hidden" name="y" value="3">
+    <button type="submit"></button>
+  </form>
+
+  <!-- Row 2 -->
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="2">
+    <input type="hidden" name="y" value="1">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="2">
+    <input type="hidden" name="y" value="2">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="2">
+    <input type="hidden" name="y" value="3">
+    <button type="submit"></button>
+  </form>
+
+  <!-- Row 3 -->
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="3">
+    <input type="hidden" name="y" value="1">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="3">
+    <input type="hidden" name="y" value="2">
+    <button type="submit"></button>
+  </form>
+  <form action="/KAREL/set_game_registers" method="GET">
+    <input type="hidden" name="x" value="3">
+    <input type="hidden" name="y" value="3">
+    <button type="submit"></button>
+  </form>
+</div>
+
+    <!-- Priklad  -->
+    <!--#if expr="F[4] = on"  -->
+        <div class="frame">
+            <p class="text">hmmm.... premyslim</p>
+        </div>
+    <!--#elif expr="F[1] = on"  -->
+        <div class="frame">
+            <p class="text">Vyhral jsi!</p>
+        </div>
+    <!--#elif expr="F[2] = on"  -->
+        <div class="frame">
+            <p class="text">Vyhral Robot</p>
+        </div>
+    <!--#elif expr="F[3] = on"  -->
+        <div class="frame">
+            <p class="text">Remiza</p>
+        </div>
+    <!--#else -->
+        <p></p>
+    <!--#endif -->
+<h1>SSPVC</h1>
+</body>
+</html>
